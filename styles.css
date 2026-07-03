@@ -13,9 +13,10 @@
   --bordure: #2A3442;
   --texte: #F8FAFC;
   --texte-2: #98A6B8;
-  --primaire: #F97316;
-  --primaire-clair: #FB923C;
+  --primaire: #F8FAFC;       /* blanc — demandé par Elliot (v2), l'orange est banni */
+  --primaire-clair: #E2E8F0;
   --sur-primaire: #0C0F14;
+  --attente: #FACC15;
   --succes: #22C55E;
   --danger: #EF4444;
   --r-sm: 10px; --r-md: 16px; --r-lg: 20px;
@@ -53,7 +54,7 @@ h1, h2, h3 { font-family: var(--titre); letter-spacing: 0.02em; }
   border-bottom: 1px solid var(--bordure);
 }
 .logo { font-size: 28px; font-weight: 700; text-transform: uppercase; }
-.logo span { color: var(--primaire); }
+.logo span { color: var(--texte-2); }
 
 .statut-sync {
   display: flex; align-items: center; gap: 8px;
@@ -64,7 +65,7 @@ h1, h2, h3 { font-family: var(--titre); letter-spacing: 0.02em; }
 }
 .statut-sync .point { width: 9px; height: 9px; border-radius: 50%; background: var(--texte-2); flex: none; }
 .statut-sync[data-etat="ok"] .point { background: var(--succes); }
-.statut-sync[data-etat="attente"] .point { background: var(--primaire); }
+.statut-sync[data-etat="attente"] .point { background: var(--attente); }
 .statut-sync[data-etat="erreur"] .point { background: var(--danger); }
 
 /* ==== Écrans ==== */
@@ -244,7 +245,7 @@ main { padding: 20px; max-width: 560px; margin: 0 auto; }
 .choix-type input { width: 20px; height: 20px; accent-color: var(--primaire); }
 
 /* ==== Historique & courbe de progression ==== */
-:root { --graphe: #EA6A0D; } /* orange validé (contraste + bande de luminance, dataviz) */
+:root { --graphe: #F8FAFC; } /* série unique monochrome : contraste ≥3:1 validé, étiquette directe */
 .graphe-tete { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
 .graphe-tete h3 { font-size: 20px; }
 .graphe-tete select {
