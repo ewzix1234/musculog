@@ -15,9 +15,19 @@ const EXERCICES_DEFAUT = [
   { nom: 'Rowing haltère', type: 'halteres' },
 ];
 
+// Amène un jeu de données v1 (ou incomplet) au schéma courant
+function migrer(data) {
+  if (data.schemaVersion === 1) data.schemaVersion = 2;
+  if (!Array.isArray(data.templates)) data.templates = [];
+  if (!Array.isArray(data.plans)) data.plans = [];
+  return data;
+}
+
 function donneesDefaut() {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
+    templates: [],
+    plans: [],
     exercises: EXERCICES_DEFAUT.map((e, i) => ({
       id: `exo-${i + 1}`,
       name: e.nom,
@@ -44,7 +54,7 @@ export function createStore(storage) {
   const brut = storage.getItem(CLE);
   if (brut) {
     try {
-      data = JSON.parse(brut);
+      data = migrer(JSON.parse(brut));
     } catch {
       data = donneesDefaut();
     }
@@ -123,6 +133,60 @@ export function createStore(storage) {
       return null;
     },
 
+    deleteSession(sessionId) {
+      data.sessions = data.sessions.filter((s) => s.id !== sessionId);
+      ecrire();
+    },
+
+    addTemplate({ name, exerciseIds }) {
+      const t = { id: genererId('mod'), name: String(name).trim(), exerciseIds: [...exerciseIds] };
+      data.templates.push(t);
+      ecrire();
+      return t;
+    },
+
+    updateTemplate(id, { name, exerciseIds }) {
+      const t = data.templates.find((x) => x.id === id);
+      if (!t) return;
+      if (name !== undefined) t.name = String(name).trim();
+      if (exerciseIds !== undefined) t.exerciseIds = [...exerciseIds];
+      ecrire();
+    },
+
+    deleteTemplate(id) {
+      data.templates = data.templates.filter((t) => t.id !== id);
+      ecrire();
+    },
+
+    // Copie indépendante du modèle : modifier le plan ne touche jamais le modèle
+    addPlan({ date, templateId }) {
+      const modele = data.templates.find((t) => t.id === templateId);
+      const p = {
+        id: genererId('plan'),
+        date,
+        templateId: templateId || null,
+        name: modele ? modele.name : 'Séance',
+        exerciseIds: modele ? [...modele.exerciseIds] : [],
+      };
+      data.plans.push(p);
+      ecrire();
+      return p;
+    },
+
+    updatePlan(id, { name, exerciseIds, date }) {
+      const p = data.plans.find((x) => x.id === id);
+      if (!p) return;
+      if (name !== undefined) p.name = String(name).trim();
+      if (exerciseIds !== undefined) p.exerciseIds = [...exerciseIds];
+      if (date !== undefined) p.date = date;
+      ecrire();
+    },
+
+    deletePlan(id) {
+      data.plans = data.plans.filter((p) => p.id !== id);
+      ecrire();
+    },
+
     export() {
       return JSON.stringify(data, null, 2);
     },
@@ -134,10 +198,10 @@ export function createStore(storage) {
       } catch {
         throw new Error('Fichier illisible : ce n’est pas du JSON valide.');
       }
-      if (!nouveau || nouveau.schemaVersion !== 1 || !Array.isArray(nouveau.sessions)) {
+      if (!nouveau || ![1, 2].includes(nouveau.schemaVersion) || !Array.isArray(nouveau.sessions)) {
         throw new Error('Fichier invalide : ce n’est pas une sauvegarde MuscuLog.');
       }
-      data = nouveau;
+      data = migrer(nouveau);
       ecrire();
     },
   };
