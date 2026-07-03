@@ -545,13 +545,11 @@ for (const btn of document.querySelectorAll('.nav-basse button')) {
 
 /* ==================== Démarrage ==================== */
 
-// DEV: hook de test visuel, à retirer avant déploiement
-const _p = new URLSearchParams(location.search);
-if (_p.get('actif')) exoActifId = _p.get('actif');
-if (_p.get('selection')) enSelection = true;
-const _ecranInitial = _p.get('ecran') || 'seance';
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
 
-afficherEcran(_ecranInitial);
+afficherEcran('seance');
 sync.pull().then(() => {
   // Les données distantes ont pu changer : on rafraîchit l'écran visible
   const actif = ecrans.find((e) => !document.getElementById(`ecran-${e}`).hidden);
