@@ -415,7 +415,110 @@ function rendreHistorique() {
 }
 
 function rendreReglages() {
-  document.getElementById('ecran-reglages').innerHTML = '<p class="texte-attenue">Bientôt disponible.</p>';
+  const ecran = document.getElementById('ecran-reglages');
+  const { gistToken, gistId, lastSyncAt } = store.getData().settings;
+
+  ecran.innerHTML = `
+    <div class="carte">
+      <h3>Sauvegarde en ligne (GitHub Gist)</h3>
+      <p class="texte-attenue reglage-aide">
+        Colle un token GitHub (avec la permission « gist ») : tes données seront
+        sauvegardées automatiquement dans un gist privé et récupérables sur
+        n’importe quel appareil.
+      </p>
+      <label class="reglage-label" for="champ-token">Token GitHub</label>
+      <div class="champ-token">
+        <input id="champ-token" type="password" autocomplete="off" placeholder="ghp_… ou github_pat_…" value="${echapper(gistToken)}">
+        <button type="button" id="btn-voir-token" aria-label="Afficher ou masquer le token">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+      <button type="button" id="btn-enregistrer-token" class="btn btn-primaire">Enregistrer et synchroniser</button>
+      <p class="texte-attenue reglage-etat">
+        ${gistId ? `Gist : ${echapper(gistId)}` : 'Aucun gist créé pour l’instant.'}
+        ${lastSyncAt ? `<br>Dernière synchro : ${new Date(lastSyncAt).toLocaleString('fr-FR')}` : ''}
+      </p>
+      ${gistToken ? `
+        <div class="reglage-actions">
+          <button type="button" id="btn-sync-maintenant" class="btn btn-secondaire">Synchroniser maintenant</button>
+          <button type="button" id="btn-restaurer" class="btn btn-secondaire">Restaurer depuis le Gist</button>
+        </div>` : ''}
+    </div>
+
+    <div class="carte">
+      <h3>Sauvegarde par fichier</h3>
+      <p class="texte-attenue reglage-aide">En secours : exporte toutes tes données dans un fichier, ou restaure-les depuis un export précédent.</p>
+      <div class="reglage-actions">
+        <button type="button" id="btn-exporter" class="btn btn-secondaire">Exporter (JSON)</button>
+        <button type="button" id="btn-importer" class="btn btn-secondaire">Importer un fichier</button>
+      </div>
+      <input id="champ-import" type="file" accept="application/json,.json" hidden>
+    </div>
+
+    <p class="texte-attenue version">MuscuLog v1</p>
+  `;
+
+  document.getElementById('btn-voir-token').addEventListener('click', () => {
+    const champ = document.getElementById('champ-token');
+    champ.type = champ.type === 'password' ? 'text' : 'password';
+  });
+
+  document.getElementById('btn-enregistrer-token').addEventListener('click', async () => {
+    const token = document.getElementById('champ-token').value.trim();
+    store.save((d) => { d.settings.gistToken = token; });
+    if (token) {
+      await sync.push();
+      if (sync.status === 'erreur') alert('Synchronisation impossible : vérifie que le token est valide et a la permission « gist ».');
+    }
+    rendreReglages();
+  });
+
+  document.getElementById('btn-sync-maintenant')?.addEventListener('click', async () => {
+    await sync.push();
+    rendreReglages();
+  });
+
+  document.getElementById('btn-restaurer')?.addEventListener('click', async () => {
+    if (!confirm('Restaurer depuis le Gist ? Les données les plus récentes (ici ou en ligne) seront conservées.')) return;
+    await sync.pull();
+    rendreReglages();
+  });
+
+  document.getElementById('btn-exporter').addEventListener('click', () => {
+    // Le token n'est jamais écrit dans le fichier exporté
+    const contenu = JSON.parse(store.export());
+    contenu.settings = { ...contenu.settings, gistToken: '' };
+    const blob = new Blob([JSON.stringify(contenu, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `musculog-export-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  document.getElementById('btn-importer').addEventListener('click', () => document.getElementById('champ-import').click());
+  document.getElementById('champ-import').addEventListener('change', async (ev) => {
+    const fichier = ev.target.files[0];
+    if (!fichier) return;
+    if (!confirm('Importer ce fichier ? Il remplacera les données actuelles.')) { ev.target.value = ''; return; }
+    try {
+      const texte = await fichier.text();
+      const tokenActuel = store.getData().settings.gistToken;
+      const gistActuel = store.getData().settings.gistId;
+      store.import(texte);
+      // Un import ne doit pas faire perdre la connexion au Gist
+      store.save((d) => {
+        if (!d.settings.gistToken) d.settings.gistToken = tokenActuel;
+        if (!d.settings.gistId) d.settings.gistId = gistActuel;
+      });
+      planifierPush();
+      alert('Import réussi.');
+      rendreReglages();
+    } catch (e) {
+      alert(e.message);
+    }
+    ev.target.value = '';
+  });
 }
 
 /* ==================== Navigation ==================== */

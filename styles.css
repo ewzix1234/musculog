@@ -267,3 +267,25 @@ main { padding: 20px; max-width: 560px; margin: 0 auto; }
 .seance-date { font-family: var(--titre); font-size: 18px; font-weight: 600; text-transform: capitalize; }
 .seance-detail { margin-top: 12px; }
 .seance-detail strong { display: block; margin-bottom: 6px; font-weight: 600; }
+
+/* ==== Réglages ==== */
+#ecran-reglages .carte h3 { font-size: 20px; margin-bottom: 6px; }
+.reglage-aide { margin-bottom: 14px; }
+.reglage-label { display: block; font-size: 14px; font-weight: 500; color: var(--texte-2); margin-bottom: 6px; }
+.champ-token { display: flex; gap: 8px; margin-bottom: 12px; }
+.champ-token input {
+  flex: 1; min-width: 0; min-height: 50px; padding: 10px 14px;
+  background: var(--bg); color: var(--texte);
+  border: 1px solid var(--bordure); border-radius: var(--r-md);
+  font-size: 15px;
+}
+.champ-token button {
+  width: 50px; flex: none; border-radius: var(--r-md);
+  background: var(--surface-2); border: 1px solid var(--bordure);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--texte-2);
+}
+.champ-token button svg { width: 22px; height: 22px; }
+.reglage-etat { margin-top: 12px; word-break: break-all; }
+.reglage-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.version { text-align: center; margin-top: 24px; }
