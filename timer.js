@@ -40,24 +40,46 @@ export function createTimer({ onTick, onEnd } = {}) {
     } catch { /* audio indisponible : la vibration suffit */ }
   }
 
+  let pauseRestant = null; // secondes restantes figées pendant la pause
+
   return {
     start(secondes) {
       arreter();
+      pauseRestant = null;
       total = secondes;
       echeance = Date.now() + secondes * 1000;
       intervalle = setInterval(tick, 250);
       tick();
     },
-    addSeconds(n) {
-      echeance += n * 1000;
-      total += n;
+    pause() {
+      if (intervalle === null || pauseRestant !== null) return;
+      pauseRestant = restant();
+      arreter();
+    },
+    resume() {
+      if (pauseRestant === null) return;
+      echeance = Date.now() + pauseRestant * 1000;
+      pauseRestant = null;
+      intervalle = setInterval(tick, 250);
       tick();
+    },
+    get paused() { return pauseRestant !== null; },
+    addSeconds(n) {
+      total += n;
+      if (pauseRestant !== null) {
+        pauseRestant += n;
+        if (onTick) onTick(pauseRestant, total);
+      } else {
+        echeance += n * 1000;
+        tick();
+      }
     },
     skip() {
       arreter();
+      pauseRestant = null;
       if (onEnd) onEnd();
     },
-    get remaining() { return restant(); },
+    get remaining() { return pauseRestant !== null ? pauseRestant : restant(); },
     get running() { return intervalle !== null; },
   };
 }
