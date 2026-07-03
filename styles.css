@@ -289,3 +289,9 @@ main { padding: 20px; max-width: 560px; margin: 0 auto; }
 .reglage-etat { margin-top: 12px; word-break: break-all; }
 .reglage-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
 .version { text-align: center; margin-top: 24px; }
+
+/* ==== v2 : pause timer + suppression séance ==== */
+#timer-overlay.en-pause #timer-chiffre { opacity: 0.4; }
+#timer-overlay.en-pause .anneau-prog { stroke: var(--texte-2); }
+.timer-actions .btn { font-size: 17px; padding: 12px 8px; }
+.btn-suppr-seance { margin-top: 14px; min-height: 48px; font-size: 16px; }

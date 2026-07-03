@@ -54,6 +54,8 @@ function ouvrirTimer() {
   for (const b of overlay.querySelectorAll('.timer-durees button')) {
     b.classList.toggle('actif', Number(b.dataset.duree) === duree);
   }
+  document.getElementById('timer-pause').textContent = 'Pause';
+  overlay.classList.remove('en-pause');
   overlay.hidden = false;
   timer.start(duree);
 }
@@ -67,6 +69,11 @@ overlay.addEventListener('click', (ev) => {
     ouvrirTimer();
   } else if (btn.id === 'timer-plus30') {
     timer.addSeconds(30);
+  } else if (btn.id === 'timer-pause') {
+    if (timer.paused) timer.resume();
+    else timer.pause();
+    btn.textContent = timer.paused ? 'Reprendre' : 'Pause';
+    overlay.classList.toggle('en-pause', timer.paused);
   } else if (btn.id === 'timer-passer') {
     timer.skip();
   }
@@ -396,11 +403,12 @@ function rendreHistorique() {
           <span class="seance-date">${formaterDate(s.date)}</span>
           <span class="texte-attenue">${s.entries.length} exos · ${nbSeries(s)} séries${volume(s) ? ` · ${Math.round(volume(s))} kg` : ''}</span>
         </div>
-        ${seanceOuverte === s.id ? s.entries.map((e) => `
+        ${seanceOuverte === s.id ? `${s.entries.map((e) => `
           <div class="seance-detail">
             <strong>${echapper(exoParId(e.exerciseId)?.name || '?')}</strong>
             <div class="chips">${e.sets.map((x) => `<span class="chip">${formaterSet(x)}</span>`).join('')}</div>
-          </div>`).join('') : ''}
+          </div>`).join('')}
+          <span class="btn btn-danger btn-suppr-seance" data-suppr="${s.id}" role="button">Supprimer cette séance</span>` : ''}
       </button>`).join('')}
   `;
 
@@ -408,6 +416,14 @@ function rendreHistorique() {
     exoGraphe = ev.target.value;
     rendreHistorique();
   });
+  ecran.querySelectorAll('.btn-suppr-seance').forEach((b) => b.addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    if (!confirm('Supprimer définitivement cette séance ?')) return;
+    store.deleteSession(b.dataset.suppr);
+    planifierPush();
+    seanceOuverte = null;
+    rendreHistorique();
+  }));
   ecran.querySelectorAll('.carte-seance').forEach((c) => c.addEventListener('click', () => {
     seanceOuverte = seanceOuverte === c.dataset.session ? null : c.dataset.session;
     rendreHistorique();
