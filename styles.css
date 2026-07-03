@@ -161,3 +161,84 @@ main { padding: 20px; max-width: 560px; margin: 0 auto; }
 .timer-durees button.actif { background: var(--primaire); border-color: var(--primaire); color: var(--sur-primaire); font-weight: 600; }
 .timer-actions { display: flex; gap: 12px; width: 100%; max-width: 380px; }
 .timer-actions .btn { flex: 1; }
+
+/* ==== Écran Séance ==== */
+.date-jour {
+  font-family: var(--titre); font-size: 20px; font-weight: 600;
+  color: var(--texte-2); text-transform: capitalize; margin-bottom: 16px;
+}
+.btn-geant { min-height: 72px; font-size: 24px; margin-bottom: 20px; }
+
+.seance-tete, .selecteur-tete {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px; gap: 12px;
+}
+.seance-tete h2, .selecteur-tete h2 { font-size: 26px; }
+
+.btn-lien {
+  min-height: 44px; padding: 8px 14px;
+  border-radius: var(--r-sm); font-weight: 600; color: var(--primaire);
+}
+.btn-lien-danger { color: var(--danger); }
+
+.carte-entree h3 { font-size: 20px; margin-bottom: 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 4px 12px; border-radius: 999px;
+  background: var(--surface-2); border: 1px solid var(--bordure);
+  font-size: 14px; font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.chip-ok { border-color: var(--succes); color: var(--succes); }
+
+.carte-active { border-color: var(--primaire); margin: 16px 0; }
+.carte-active h3 { font-size: 24px; }
+.carte-active .perf { margin: 4px 0 12px; }
+.carte-active .chips { margin-bottom: 12px; }
+
+.saisie { display: flex; flex-direction: column; gap: 14px; margin: 16px 0; }
+.stepper-label { display: block; font-size: 14px; font-weight: 500; color: var(--texte-2); margin-bottom: 6px; }
+.stepper-ctrl { display: flex; gap: 10px; }
+.stepper-ctrl button {
+  width: 58px; height: 58px; flex: none;
+  border-radius: var(--r-md); background: var(--surface-2);
+  border: 1px solid var(--bordure);
+  font-size: 28px; font-weight: 600; line-height: 1;
+  transition: transform 150ms ease-out;
+}
+.stepper-ctrl button:active { transform: scale(0.94); background: var(--bordure); }
+.stepper-ctrl input {
+  flex: 1; min-width: 0; height: 58px; text-align: center;
+  background: var(--bg); color: var(--texte);
+  border: 1px solid var(--bordure); border-radius: var(--r-md);
+  font-family: var(--titre); font-size: 30px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.stepper-ctrl input::-webkit-outer-spin-button,
+.stepper-ctrl input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.stepper-aide { display: block; font-size: 13px; color: var(--texte-2); margin-top: 4px; }
+
+/* ==== Sélecteur d'exercice ==== */
+.groupe-titre { font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--texte-2); margin: 18px 0 8px; }
+.liste-exos { display: flex; flex-direction: column; gap: 8px; }
+.exo-item {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  padding: 14px 16px; min-height: 54px;
+  background: var(--surface); border: 1px solid var(--bordure);
+  border-radius: var(--r-md); text-align: left;
+  font-size: 17px; font-weight: 500;
+  transition: transform 150ms ease-out, border-color var(--transition);
+}
+.exo-item:active { transform: scale(0.98); border-color: var(--primaire); }
+
+.form-exo { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
+.form-exo h3 { font-size: 18px; }
+.form-exo input[type="text"] {
+  min-height: 50px; padding: 10px 14px;
+  background: var(--bg); color: var(--texte);
+  border: 1px solid var(--bordure); border-radius: var(--r-md);
+  font-size: 16px;
+}
+.choix-type { display: flex; gap: 18px; }
+.choix-type label { display: flex; align-items: center; gap: 8px; min-height: 44px; font-size: 15px; color: var(--texte-2); }
+.choix-type input { width: 20px; height: 20px; accent-color: var(--primaire); }
