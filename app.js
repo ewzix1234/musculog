@@ -308,8 +308,110 @@ function terminerSeance(session) {
 
 /* ==================== Écrans Historique / Réglages (Tasks 6-7) ==================== */
 
+let exoGraphe = null;      // exercice affiché dans la courbe de progression
+let seanceOuverte = null;  // séance dépliée dans la liste
+
+// Meilleure perf d'une séance sur un exercice : charge max, ou reps max si poids du corps
+function meilleurePerf(session, exerciseId) {
+  const entree = session.entries.find((e) => e.exerciseId === exerciseId);
+  if (!entree || !entree.sets.length) return null;
+  const maxPoids = Math.max(...entree.sets.map((s) => s.weight));
+  if (maxPoids > 0) return { valeur: maxPoids, unite: 'kg' };
+  return { valeur: Math.max(...entree.sets.map((s) => s.reps)), unite: 'reps' };
+}
+
+function serieProgression(exerciseId) {
+  return store.getData().sessions
+    .filter((s) => s.endedAt)
+    .map((s) => ({ date: s.date, perf: meilleurePerf(s, exerciseId) }))
+    .filter((p) => p.perf);
+}
+
+// Courbe SVG : 1 série, ligne 2px, points ≥8px, grille discrète, étiquette sur le dernier point
+function rendreCourbe(points) {
+  const W = 320, H = 150, m = { haut: 18, droite: 34, bas: 22, gauche: 30 };
+  const xs = points.map((_, i) => m.gauche + (i * (W - m.gauche - m.droite)) / Math.max(1, points.length - 1));
+  const vals = points.map((p) => p.perf.valeur);
+  const vMax = Math.max(...vals), vMin = Math.min(...vals);
+  const plage = vMax - vMin || 1;
+  const y = (v) => m.haut + (H - m.haut - m.bas) * (1 - (v - vMin) / plage);
+  const fmtDate = (d) => new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+
+  const grille = [vMax, (vMax + vMin) / 2, vMin].map((v) =>
+    `<line x1="${m.gauche}" x2="${W - m.droite}" y1="${y(v)}" y2="${y(v)}" class="graphe-grille"/>
+     <text x="${m.gauche - 5}" y="${y(v) + 3}" class="graphe-txt" text-anchor="end">${Math.round(v * 10) / 10}</text>`).join('');
+
+  const ligne = points.length > 1
+    ? `<polyline class="graphe-ligne" points="${points.map((p, i) => `${xs[i]},${y(p.perf.valeur)}`).join(' ')}"/>` : '';
+
+  const marques = points.map((p, i) => `
+    <circle class="graphe-point" cx="${xs[i]}" cy="${y(p.perf.valeur)}" r="4"/>
+    <circle class="graphe-cible" cx="${xs[i]}" cy="${y(p.perf.valeur)}" r="14">
+      <title>${fmtDate(p.date)} : ${p.perf.valeur} ${p.perf.unite}</title>
+    </circle>`).join('');
+
+  const dernier = points[points.length - 1];
+  const etiquette = `<text x="${xs[xs.length - 1]}" y="${y(dernier.perf.valeur) - 9}" class="graphe-txt graphe-valeur" text-anchor="middle">${dernier.perf.valeur} ${dernier.perf.unite}</text>`;
+
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Progression : ${points.map((p) => `${fmtDate(p.date)} ${p.perf.valeur} ${p.perf.unite}`).join(', ')}">
+    ${grille}
+    <text x="${m.gauche}" y="${H - 6}" class="graphe-txt">${fmtDate(points[0].date)}</text>
+    <text x="${W - m.droite}" y="${H - 6}" class="graphe-txt" text-anchor="end">${fmtDate(dernier.date)}</text>
+    ${ligne}${marques}${etiquette}
+  </svg>`;
+}
+
 function rendreHistorique() {
-  document.getElementById('ecran-historique').innerHTML = '<p class="texte-attenue">Bientôt disponible.</p>';
+  const ecran = document.getElementById('ecran-historique');
+  const d = store.getData();
+  const terminees = [...d.sessions].filter((s) => s.endedAt).reverse();
+
+  if (!terminees.length) {
+    ecran.innerHTML = '<div class="carte"><p class="texte-attenue">Aucune séance terminée pour l’instant. Tes séances apparaîtront ici avec ta progression.</p></div>';
+    return;
+  }
+
+  // Exercices ayant au moins 2 séances : candidats à la courbe
+  const candidats = d.exercises.filter((e) => serieProgression(e.id).length >= 2);
+  if (!exoGraphe || !candidats.some((e) => e.id === exoGraphe)) exoGraphe = candidats[0]?.id || null;
+
+  const volume = (s) => s.entries.reduce((t, e) => t + e.sets.reduce((v, x) => v + x.reps * x.weight, 0), 0);
+
+  ecran.innerHTML = `
+    ${candidats.length ? `
+      <div class="carte">
+        <div class="graphe-tete">
+          <h3>Progression</h3>
+          <select id="choix-exo-graphe" aria-label="Exercice à afficher">
+            ${candidats.map((e) => `<option value="${e.id}" ${e.id === exoGraphe ? 'selected' : ''}>${echapper(e.name)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="graphe">${rendreCourbe(serieProgression(exoGraphe))}</div>
+      </div>` : ''}
+
+    <h3 class="groupe-titre">Séances (${terminees.length})</h3>
+    ${terminees.map((s) => `
+      <button type="button" class="carte carte-seance ${seanceOuverte === s.id ? 'ouverte' : ''}" data-session="${s.id}">
+        <div class="seance-ligne">
+          <span class="seance-date">${formaterDate(s.date)}</span>
+          <span class="texte-attenue">${s.entries.length} exos · ${nbSeries(s)} séries${volume(s) ? ` · ${Math.round(volume(s))} kg` : ''}</span>
+        </div>
+        ${seanceOuverte === s.id ? s.entries.map((e) => `
+          <div class="seance-detail">
+            <strong>${echapper(exoParId(e.exerciseId)?.name || '?')}</strong>
+            <div class="chips">${e.sets.map((x) => `<span class="chip">${formaterSet(x)}</span>`).join('')}</div>
+          </div>`).join('') : ''}
+      </button>`).join('')}
+  `;
+
+  document.getElementById('choix-exo-graphe')?.addEventListener('change', (ev) => {
+    exoGraphe = ev.target.value;
+    rendreHistorique();
+  });
+  ecran.querySelectorAll('.carte-seance').forEach((c) => c.addEventListener('click', () => {
+    seanceOuverte = seanceOuverte === c.dataset.session ? null : c.dataset.session;
+    rendreHistorique();
+  }));
 }
 
 function rendreReglages() {
