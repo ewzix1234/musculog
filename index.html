@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0C0F14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>MuscuLog</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header class="entete">
+    <h1 class="logo">Muscu<span>Log</span></h1>
+    <button id="statut-sync" class="statut-sync" type="button" aria-label="État de la synchronisation" data-etat="local">
+      <span class="point"></span><span id="statut-sync-texte">Local</span>
+    </button>
+  </header>
+
+  <main id="ecran-seance" aria-label="Séance"></main>
+  <main id="ecran-historique" aria-label="Historique" hidden></main>
+  <main id="ecran-reglages" aria-label="Réglages" hidden></main>
+
+  <nav class="nav-basse" aria-label="Navigation principale">
+    <button type="button" data-ecran="seance" class="actif" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.4 14.4 9.6 9.6"/><path d="M18.657 21.485a2 2 0 1 1-2.829-2.828l-1.767 1.768a2 2 0 1 1-2.829-2.829l6.364-6.364a2 2 0 1 1 2.829 2.829l-1.768 1.767a2 2 0 1 1 2.828 2.829z"/><path d="m21.5 21.5-1.4-1.4"/><path d="M3.9 3.9 2.5 2.5"/><path d="M6.404 12.768a2 2 0 1 1-2.829-2.829l1.768-1.767a2 2 0 1 1-2.828-2.829l2.828-2.828a2 2 0 1 1 2.829 2.828l1.767-1.768a2 2 0 1 1 2.829 2.829z"/></svg>
+      <span>Séance</span>
+    </button>
+    <button type="button" data-ecran="historique">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 13l3-3 3 2 5-6"/></svg>
+      <span>Historique</span>
+    </button>
+    <button type="button" data-ecran="reglages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Réglages</span>
+    </button>
+  </nav>
+
+  <div id="timer-overlay" role="dialog" aria-modal="true" aria-label="Timer de repos" hidden>
+    <p class="timer-titre">Repos</p>
+    <div class="timer-cercle">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="anneau-fond" cx="50" cy="50" r="45"/>
+        <circle id="timer-anneau" class="anneau-prog" cx="50" cy="50" r="45"/>
+      </svg>
+      <span id="timer-chiffre">1:30</span>
+    </div>
+    <div class="timer-durees" role="group" aria-label="Durée de repos">
+      <button type="button" data-duree="30">30 s</button>
+      <button type="button" data-duree="60">1 min</button>
+      <button type="button" data-duree="90">1:30</button>
+      <button type="button" data-duree="120">2 min</button>
+    </div>
+    <div class="timer-actions">
+      <button type="button" id="timer-plus30" class="btn btn-secondaire">+30 s</button>
+      <button type="button" id="timer-passer" class="btn btn-primaire">Passer</button>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
