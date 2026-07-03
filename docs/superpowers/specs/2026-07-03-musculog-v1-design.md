@@ -57,3 +57,16 @@ Programmes planifiés, comptes utilisateurs, nutrition/calories, multi-utilisate
 - Utilisable à une main pendant une séance, hors ligne.
 - Une série validée survit à la fermeture immédiate de l'app.
 - Données restaurables sur un autre appareil via Gist ou fichier.
+
+---
+
+# Addendum v2 (validé par Elliot le 3 juillet 2026)
+
+1. **Couleur** : l'orange est remplacé par du **blanc** comme couleur principale (Elliot n'aime pas l'orange). Vert = validation, rouge = danger inchangés.
+2. **Suppression de séances** : possible depuis l'historique (carte dépliée) et depuis le calendrier, avec confirmation.
+3. **Pause du timer** : bouton Pause / Reprendre dans l'overlay.
+4. **Séances types (modèles)** : l'utilisateur coche des exercices et enregistre la séance sous un nom modifiable. CRUD complet.
+5. **Calendrier (nouvel onglet Agenda)** : vue mensuelle ; on pose une séance type sur n'importe quel jour ; la version posée sur un jour est modifiable **sans changer le modèle** ; on peut la retirer d'un jour. Jours avec séance faite = point plein ; jours avec séance prévue = contour.
+6. **Écran Séance** : si une séance est prévue aujourd'hui, proposer de la démarrer ; le sélecteur d'exercices met en avant les exercices prévus restants.
+
+Données v2 : `schemaVersion: 2`, ajout de `templates[] { id, name, exerciseIds }` et `plans[] { id, date, templateId, name, exerciseIds }` (copie indépendante du modèle), `sessions[].planId?`. Migration v1→v2 automatique. `sw.js` : CACHE v2.
