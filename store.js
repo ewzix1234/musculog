@@ -78,12 +78,13 @@ export function createStore(storage) {
       ecrire();
     },
 
-    addSession() {
+    addSession(planId = null) {
       const session = {
         id: genererId('sea'),
         date: new Date().toISOString().slice(0, 10),
         startedAt: new Date().toISOString(),
         endedAt: null,
+        planId,
         entries: [],
       };
       data.sessions.push(session);

@@ -125,9 +125,18 @@ function rendreSeance() {
 function rendreAccueil() {
   const d = store.getData();
   const derniere = [...d.sessions].reverse().find((s) => s.endedAt);
+  const plansAujourdhui = plansDuJour(dateISO(new Date()));
   ecranSeance.innerHTML = `
     <p class="date-jour">${formaterDate(new Date().toISOString())}</p>
-    <button type="button" id="btn-demarrer" class="btn btn-primaire btn-geant">Démarrer la séance</button>
+    ${plansAujourdhui.map((p) => `
+      <div class="carte carte-plan">
+        <div>
+          <h3>${echapper(p.name)}</h3>
+          <p class="texte-attenue">Prévue aujourd’hui · ${p.exerciseIds.map((id) => echapper(exoParId(id)?.name || '?')).join(', ') || 'aucun exercice'}</p>
+        </div>
+        <button type="button" class="btn btn-succes" data-demarrer-plan="${p.id}">Démarrer cette séance</button>
+      </div>`).join('')}
+    <button type="button" id="btn-demarrer" class="btn ${plansAujourdhui.length ? 'btn-secondaire' : 'btn-primaire'} btn-geant">Démarrer une séance libre</button>
     ${derniere ? `
       <div class="carte">
         <h3>Dernière séance</h3>
@@ -144,14 +153,30 @@ function rendreAccueil() {
     enSelection = true;
     rendreSeance();
   });
+  ecranSeance.querySelectorAll('[data-demarrer-plan]').forEach((b) => b.addEventListener('click', () => {
+    const plan = store.getData().plans.find((p) => p.id === b.dataset.demarrerPlan);
+    store.addSession(plan?.id || null);
+    planifierPush();
+    exoActifId = plan?.exerciseIds[0] || null;
+    enSelection = !exoActifId;
+    rendreSeance();
+  }));
 }
 
 function rendreSelecteur(session) {
   const d = store.getData();
-  const groupes = [
+  const groupes = [];
+  const plan = session.planId ? d.plans.find((p) => p.id === session.planId) : null;
+  if (plan) {
+    const restants = plan.exerciseIds
+      .filter((id) => !session.entries.some((e) => e.exerciseId === id))
+      .map((id) => exoParId(id)).filter(Boolean);
+    if (restants.length) groupes.push({ titre: 'Prévu dans cette séance', exos: restants });
+  }
+  groupes.push(
     { titre: 'Poids du corps', exos: d.exercises.filter((e) => e.type === 'corps') },
     { titre: 'Haltères', exos: d.exercises.filter((e) => e.type === 'halteres') },
-  ];
+  );
   ecranSeance.innerHTML = `
     <div class="selecteur-tete">
       <h2>Choisir un exercice</h2>
@@ -311,6 +336,249 @@ function terminerSeance(session) {
   exoActifId = null;
   enSelection = false;
   rendreSeance();
+}
+
+/* ==================== Écran Agenda : calendrier + séances types ==================== */
+
+function dateISO(d) {
+  const tz = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return tz.toISOString().slice(0, 10);
+}
+
+let moisAffiche = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let jourSelectionne = dateISO(new Date());
+let editeur = null;        // { type: 'template'|'plan', id: string|null } → éditeur ouvert
+let choixModelePourJour = false;
+
+function sessionsDuJour(date) {
+  return store.getData().sessions.filter((s) => s.endedAt && s.date === date);
+}
+
+function plansDuJour(date) {
+  return store.getData().plans.filter((p) => p.date === date);
+}
+
+function rendreCalendrier() {
+  const annee = moisAffiche.getFullYear(), mois = moisAffiche.getMonth();
+  const nomMois = moisAffiche.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+  const aujourdHui = dateISO(new Date());
+
+  // Grille du lundi précédant le 1er au dimanche suivant la fin du mois
+  const premier = new Date(annee, mois, 1);
+  const debut = new Date(premier);
+  debut.setDate(1 - ((premier.getDay() + 6) % 7));
+  const cases = [];
+  for (let d = new Date(debut); cases.length < 42; d.setDate(d.getDate() + 1)) {
+    cases.push(new Date(d));
+    if (d.getMonth() !== mois && d.getDay() === 0 && cases.length >= 28) break;
+  }
+
+  return `
+    <div class="cal-tete">
+      <button type="button" id="cal-prec" aria-label="Mois précédent">‹</button>
+      <h2>${nomMois.charAt(0).toUpperCase() + nomMois.slice(1)}</h2>
+      <button type="button" id="cal-suiv" aria-label="Mois suivant">›</button>
+    </div>
+    <div class="cal-grille" role="grid">
+      ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((j) => `<span class="cal-jour-nom">${j}</span>`).join('')}
+      ${cases.map((d) => {
+        const iso = dateISO(d);
+        const faites = sessionsDuJour(iso).length;
+        const prevues = plansDuJour(iso).length;
+        return `<button type="button" class="cal-jour
+          ${d.getMonth() !== mois ? 'autre-mois' : ''}
+          ${iso === aujourdHui ? 'aujourdhui' : ''}
+          ${iso === jourSelectionne ? 'selectionne' : ''}
+          ${prevues ? 'a-plan' : ''}" data-jour="${iso}">
+          <span>${d.getDate()}</span>
+          ${faites ? '<i class="pt-fait"></i>' : ''}
+        </button>`;
+      }).join('')}
+    </div>`;
+}
+
+function rendreJourDetail() {
+  const faites = sessionsDuJour(jourSelectionne);
+  const prevues = plansDuJour(jourSelectionne);
+  const modeles = store.getData().templates;
+  const titre = formaterDate(jourSelectionne);
+
+  return `
+    <div class="carte">
+      <h3 class="jour-titre">${titre}</h3>
+
+      ${faites.map((s) => `
+        <div class="jour-ligne">
+          <div>
+            <strong>Séance faite</strong>
+            <span class="texte-attenue">${s.entries.length} exos · ${nbSeries(s)} séries</span>
+          </div>
+          <button type="button" class="btn-lien btn-lien-danger" data-suppr-session="${s.id}">Supprimer</button>
+        </div>`).join('')}
+
+      ${prevues.map((p) => `
+        <div class="jour-ligne">
+          <div>
+            <strong>${echapper(p.name)}</strong>
+            <span class="texte-attenue">Prévue · ${p.exerciseIds.length} exercices</span>
+          </div>
+          <div class="jour-actions">
+            <button type="button" class="btn-lien" data-modif-plan="${p.id}">Modifier</button>
+            <button type="button" class="btn-lien btn-lien-danger" data-retirer-plan="${p.id}">Retirer</button>
+          </div>
+        </div>`).join('')}
+
+      ${!faites.length && !prevues.length ? '<p class="texte-attenue">Rien ce jour-là.</p>' : ''}
+
+      ${choixModelePourJour ? `
+        <div class="choix-modele">
+          ${modeles.length
+            ? modeles.map((t) => `<button type="button" class="exo-item" data-poser-modele="${t.id}">
+                <span>${echapper(t.name)}</span><span class="texte-attenue">${t.exerciseIds.length} exercices</span>
+              </button>`).join('')
+            : '<p class="texte-attenue">Aucune séance type : crée-en une ci-dessous d’abord.</p>'}
+          <button type="button" id="btn-annuler-choix" class="btn-lien">Annuler</button>
+        </div>` : `
+        <button type="button" id="btn-planifier" class="btn btn-primaire">Planifier une séance ce jour</button>`}
+    </div>`;
+}
+
+function rendreModeles() {
+  const modeles = store.getData().templates;
+  return `
+    <h3 class="groupe-titre">Mes séances types</h3>
+    ${modeles.map((t) => `
+      <div class="carte jour-ligne">
+        <div>
+          <strong>${echapper(t.name)}</strong>
+          <span class="texte-attenue">${t.exerciseIds.map((id) => echapper(exoParId(id)?.name || '?')).join(', ') || 'Vide'}</span>
+        </div>
+        <div class="jour-actions">
+          <button type="button" class="btn-lien" data-modif-modele="${t.id}">Modifier</button>
+          <button type="button" class="btn-lien btn-lien-danger" data-suppr-modele="${t.id}">Supprimer</button>
+        </div>
+      </div>`).join('')}
+    <button type="button" id="btn-nouveau-modele" class="btn btn-secondaire">Créer une séance type</button>`;
+}
+
+// Éditeur commun : séance type (modèle) ou séance posée sur un jour (plan)
+function rendreEditeur() {
+  const d = store.getData();
+  const objet = editeur.type === 'template'
+    ? d.templates.find((t) => t.id === editeur.id)
+    : d.plans.find((p) => p.id === editeur.id);
+  const nom = objet?.name || '';
+  const coches = new Set(objet?.exerciseIds || []);
+  const groupes = [
+    { titre: 'Poids du corps', exos: d.exercises.filter((e) => e.type === 'corps') },
+    { titre: 'Haltères', exos: d.exercises.filter((e) => e.type === 'halteres') },
+  ];
+
+  const ecran = document.getElementById('ecran-agenda');
+  ecran.innerHTML = `
+    <div class="selecteur-tete">
+      <h2>${editeur.type === 'template' ? (editeur.id ? 'Modifier la séance type' : 'Nouvelle séance type') : 'Modifier la séance du jour'}</h2>
+      <button type="button" id="btn-editeur-annuler" class="btn-lien">Annuler</button>
+    </div>
+    ${editeur.type === 'plan' ? '<p class="texte-attenue" style="margin-bottom:12px">Ces changements ne modifient que ce jour, pas la séance type.</p>' : ''}
+    <label class="reglage-label" for="editeur-nom">Nom</label>
+    <input id="editeur-nom" type="text" maxlength="60" value="${echapper(nom)}" placeholder="Ex. Haut du corps" class="champ-nom">
+    ${groupes.map((g) => `
+      <h3 class="groupe-titre">${g.titre}</h3>
+      <div class="liste-exos">
+        ${g.exos.map((e) => `
+          <label class="exo-item exo-coche">
+            <input type="checkbox" value="${e.id}" ${coches.has(e.id) ? 'checked' : ''}>
+            <span>${echapper(e.name)}</span>
+          </label>`).join('')}
+      </div>`).join('')}
+    <button type="button" id="btn-editeur-enregistrer" class="btn btn-succes" style="margin-top:20px">Enregistrer</button>
+  `;
+
+  document.getElementById('btn-editeur-annuler').addEventListener('click', () => {
+    editeur = null;
+    rendreAgenda();
+  });
+  document.getElementById('btn-editeur-enregistrer').addEventListener('click', () => {
+    const nomSaisi = document.getElementById('editeur-nom').value.trim() || 'Séance';
+    const ids = [...ecran.querySelectorAll('input[type="checkbox"]:checked')].map((c) => c.value);
+    if (editeur.type === 'template') {
+      if (editeur.id) store.updateTemplate(editeur.id, { name: nomSaisi, exerciseIds: ids });
+      else store.addTemplate({ name: nomSaisi, exerciseIds: ids });
+    } else {
+      store.updatePlan(editeur.id, { name: nomSaisi, exerciseIds: ids });
+    }
+    planifierPush();
+    editeur = null;
+    rendreAgenda();
+  });
+}
+
+function rendreAgenda() {
+  if (editeur) return rendreEditeur();
+  const ecran = document.getElementById('ecran-agenda');
+  ecran.innerHTML = rendreCalendrier() + rendreJourDetail() + rendreModeles();
+
+  document.getElementById('cal-prec').addEventListener('click', () => {
+    moisAffiche = new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() - 1, 1);
+    rendreAgenda();
+  });
+  document.getElementById('cal-suiv').addEventListener('click', () => {
+    moisAffiche = new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() + 1, 1);
+    rendreAgenda();
+  });
+  ecran.querySelectorAll('.cal-jour').forEach((b) => b.addEventListener('click', () => {
+    jourSelectionne = b.dataset.jour;
+    choixModelePourJour = false;
+    rendreAgenda();
+  }));
+
+  document.getElementById('btn-planifier')?.addEventListener('click', () => {
+    choixModelePourJour = true;
+    rendreAgenda();
+  });
+  document.getElementById('btn-annuler-choix')?.addEventListener('click', () => {
+    choixModelePourJour = false;
+    rendreAgenda();
+  });
+  ecran.querySelectorAll('[data-poser-modele]').forEach((b) => b.addEventListener('click', () => {
+    store.addPlan({ date: jourSelectionne, templateId: b.dataset.poserModele });
+    planifierPush();
+    choixModelePourJour = false;
+    rendreAgenda();
+  }));
+
+  ecran.querySelectorAll('[data-retirer-plan]').forEach((b) => b.addEventListener('click', () => {
+    if (!confirm('Retirer cette séance prévue de ce jour ?')) return;
+    store.deletePlan(b.dataset.retirerPlan);
+    planifierPush();
+    rendreAgenda();
+  }));
+  ecran.querySelectorAll('[data-modif-plan]').forEach((b) => b.addEventListener('click', () => {
+    editeur = { type: 'plan', id: b.dataset.modifPlan };
+    rendreAgenda();
+  }));
+  ecran.querySelectorAll('[data-suppr-session]').forEach((b) => b.addEventListener('click', () => {
+    if (!confirm('Supprimer définitivement cette séance ?')) return;
+    store.deleteSession(b.dataset.supprSession);
+    planifierPush();
+    rendreAgenda();
+  }));
+
+  document.getElementById('btn-nouveau-modele').addEventListener('click', () => {
+    editeur = { type: 'template', id: null };
+    rendreAgenda();
+  });
+  ecran.querySelectorAll('[data-modif-modele]').forEach((b) => b.addEventListener('click', () => {
+    editeur = { type: 'template', id: b.dataset.modifModele };
+    rendreAgenda();
+  }));
+  ecran.querySelectorAll('[data-suppr-modele]').forEach((b) => b.addEventListener('click', () => {
+    if (!confirm('Supprimer cette séance type ? (Les séances déjà posées sur le calendrier restent.)')) return;
+    store.deleteTemplate(b.dataset.supprModele);
+    planifierPush();
+    rendreAgenda();
+  }));
 }
 
 /* ==================== Écrans Historique / Réglages (Tasks 6-7) ==================== */
@@ -539,8 +807,8 @@ function rendreReglages() {
 
 /* ==================== Navigation ==================== */
 
-const RENDUS = { seance: rendreSeance, historique: rendreHistorique, reglages: rendreReglages };
-const ecrans = ['seance', 'historique', 'reglages'];
+const RENDUS = { seance: rendreSeance, agenda: rendreAgenda, historique: rendreHistorique, reglages: rendreReglages };
+const ecrans = ['seance', 'agenda', 'historique', 'reglages'];
 
 function afficherEcran(nom) {
   for (const e of ecrans) {
