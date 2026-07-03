@@ -120,3 +120,44 @@ main { padding: 20px; max-width: 560px; margin: 0 auto; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ==== Timer de repos (overlay plein écran) ==== */
+#timer-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 28px; padding: 24px;
+  background: color-mix(in srgb, var(--bg) 96%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.timer-titre {
+  font-family: var(--titre); font-size: 26px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em; color: var(--texte-2);
+}
+.timer-cercle { position: relative; width: min(72vw, 300px); aspect-ratio: 1; }
+.timer-cercle svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.anneau-fond { fill: none; stroke: var(--surface-2); stroke-width: 6; }
+.anneau-prog {
+  fill: none; stroke: var(--primaire); stroke-width: 6; stroke-linecap: round;
+  stroke-dasharray: 282.74; /* 2πr, r=45 */
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 250ms linear;
+}
+#timer-chiffre {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--titre); font-weight: 700;
+  font-size: clamp(64px, 22vw, 96px);
+  font-variant-numeric: tabular-nums;
+}
+.timer-durees { display: flex; gap: 10px; }
+.timer-durees button {
+  min-height: 44px; padding: 8px 16px;
+  border-radius: 999px; border: 1px solid var(--bordure);
+  background: var(--surface); color: var(--texte-2);
+  font-size: 15px; font-weight: 500;
+  transition: all var(--transition);
+}
+.timer-durees button.actif { background: var(--primaire); border-color: var(--primaire); color: var(--sur-primaire); font-weight: 600; }
+.timer-actions { display: flex; gap: 12px; width: 100%; max-width: 380px; }
+.timer-actions .btn { flex: 1; }

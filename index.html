@@ -39,7 +39,26 @@
     </button>
   </nav>
 
-  <div id="timer-overlay" role="dialog" aria-modal="true" aria-label="Timer de repos" hidden></div>
+  <div id="timer-overlay" role="dialog" aria-modal="true" aria-label="Timer de repos" hidden>
+    <p class="timer-titre">Repos</p>
+    <div class="timer-cercle">
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <circle class="anneau-fond" cx="50" cy="50" r="45"/>
+        <circle id="timer-anneau" class="anneau-prog" cx="50" cy="50" r="45"/>
+      </svg>
+      <span id="timer-chiffre">1:30</span>
+    </div>
+    <div class="timer-durees" role="group" aria-label="Durée de repos">
+      <button type="button" data-duree="30">30 s</button>
+      <button type="button" data-duree="60">1 min</button>
+      <button type="button" data-duree="90">1:30</button>
+      <button type="button" data-duree="120">2 min</button>
+    </div>
+    <div class="timer-actions">
+      <button type="button" id="timer-plus30" class="btn btn-secondaire">+30 s</button>
+      <button type="button" id="timer-passer" class="btn btn-primaire">Passer</button>
+    </div>
+  </div>
 
   <script type="module" src="app.js"></script>
 </body>
