@@ -15,17 +15,26 @@ const EXERCICES_DEFAUT = [
   { nom: 'Rowing haltère', type: 'halteres' },
 ];
 
-// Amène un jeu de données v1 (ou incomplet) au schéma courant
+// Amène un jeu de données v1/v2 (ou incomplet) au schéma courant
 function migrer(data) {
   if (data.schemaVersion === 1) data.schemaVersion = 2;
   if (!Array.isArray(data.templates)) data.templates = [];
   if (!Array.isArray(data.plans)) data.plans = [];
+  if (data.schemaVersion === 2) {
+    data.schemaVersion = 3;
+    for (const t of [...data.templates, ...data.plans]) {
+      if (!Array.isArray(t.items)) {
+        t.items = (t.exerciseIds || []).map((id) => ({ exerciseId: id, sets: 3, reps: 10 }));
+        delete t.exerciseIds;
+      }
+    }
+  }
   return data;
 }
 
 function donneesDefaut() {
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     templates: [],
     plans: [],
     exercises: EXERCICES_DEFAUT.map((e, i) => ({
@@ -139,18 +148,18 @@ export function createStore(storage) {
       ecrire();
     },
 
-    addTemplate({ name, exerciseIds }) {
-      const t = { id: genererId('mod'), name: String(name).trim(), exerciseIds: [...exerciseIds] };
+    addTemplate({ name, items }) {
+      const t = { id: genererId('mod'), name: String(name).trim(), items: items.map((i) => ({ ...i })) };
       data.templates.push(t);
       ecrire();
       return t;
     },
 
-    updateTemplate(id, { name, exerciseIds }) {
+    updateTemplate(id, { name, items }) {
       const t = data.templates.find((x) => x.id === id);
       if (!t) return;
       if (name !== undefined) t.name = String(name).trim();
-      if (exerciseIds !== undefined) t.exerciseIds = [...exerciseIds];
+      if (items !== undefined) t.items = items.map((i) => ({ ...i }));
       ecrire();
     },
 
@@ -167,18 +176,18 @@ export function createStore(storage) {
         date,
         templateId: templateId || null,
         name: modele ? modele.name : 'Séance',
-        exerciseIds: modele ? [...modele.exerciseIds] : [],
+        items: modele ? modele.items.map((i) => ({ ...i })) : [],
       };
       data.plans.push(p);
       ecrire();
       return p;
     },
 
-    updatePlan(id, { name, exerciseIds, date }) {
+    updatePlan(id, { name, items, date }) {
       const p = data.plans.find((x) => x.id === id);
       if (!p) return;
       if (name !== undefined) p.name = String(name).trim();
-      if (exerciseIds !== undefined) p.exerciseIds = [...exerciseIds];
+      if (items !== undefined) p.items = items.map((i) => ({ ...i }));
       if (date !== undefined) p.date = date;
       ecrire();
     },
@@ -199,7 +208,7 @@ export function createStore(storage) {
       } catch {
         throw new Error('Fichier illisible : ce n’est pas du JSON valide.');
       }
-      if (!nouveau || ![1, 2].includes(nouveau.schemaVersion) || !Array.isArray(nouveau.sessions)) {
+      if (!nouveau || ![1, 2, 3].includes(nouveau.schemaVersion) || !Array.isArray(nouveau.sessions)) {
         throw new Error('Fichier invalide : ce n’est pas une sauvegarde MuscuLog.');
       }
       data = migrer(nouveau);

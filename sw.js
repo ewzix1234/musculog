@@ -1,7 +1,7 @@
 // MuscuLog — service worker : cache-first pour un fonctionnement 100 % hors-ligne.
 // Incrémenter CACHE à chaque déploiement pour invalider l'ancien cache.
 
-const CACHE = 'musculog-v4';
+const CACHE = 'musculog-v5';
 
 const FICHIERS = [
   '.',

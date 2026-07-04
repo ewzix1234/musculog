@@ -129,8 +129,6 @@ function rendreSeance() {
 }
 
 function rendreAccueil() {
-  const d = store.getData();
-  const derniere = [...d.sessions].reverse().find((s) => s.endedAt);
   const plansAujourdhui = plansDuJour(dateISO(new Date()));
   ecranSeance.innerHTML = `
     <p class="date-jour">${formaterDate(new Date().toISOString())}</p>
@@ -138,16 +136,12 @@ function rendreAccueil() {
       <div class="carte carte-plan">
         <div>
           <h3>${echapper(p.name)}</h3>
-          <p class="texte-attenue">Prévue aujourd’hui · ${p.exerciseIds.length} exercices</p>
+          <p class="texte-attenue">Prévue aujourd’hui · ${p.items.length} exercices</p>
         </div>
         <button type="button" class="btn btn-succes" data-demarrer-plan="${p.id}">Démarrer cette séance</button>
       </div>`).join('')}
     <button type="button" id="btn-demarrer" class="btn ${plansAujourdhui.length ? 'btn-secondaire' : 'btn-primaire'} btn-geant">Démarrer une séance libre</button>
-    ${derniere ? `
-      <div class="carte">
-        <h3>Dernière séance</h3>
-        <p class="texte-attenue">${formaterDate(derniere.date)} · ${derniere.entries.length} exercices · ${nbSeries(derniere)} séries</p>
-      </div>` : ''}
+    <button type="button" id="btn-creer-type" class="btn btn-secondaire">Créer une séance type</button>
   `;
   document.getElementById('btn-demarrer').addEventListener('click', () => {
     store.addSession();
@@ -156,11 +150,16 @@ function rendreAccueil() {
     enSelection = true;
     rendreSeance();
   });
+  document.getElementById('btn-creer-type').addEventListener('click', () => {
+    editeur = { type: 'template', id: null };
+    vueAgenda = 'modeles';
+    afficherEcran('agenda');
+  });
   ecranSeance.querySelectorAll('[data-demarrer-plan]').forEach((b) => b.addEventListener('click', () => {
     const plan = store.getData().plans.find((p) => p.id === b.dataset.demarrerPlan);
     store.addSession(plan?.id || null);
     planifierPush();
-    exoActifId = plan?.exerciseIds[0] || null;
+    exoActifId = plan?.items[0]?.exerciseId || null;
     enSelection = !exoActifId;
     rendreSeance();
   }));
@@ -171,7 +170,8 @@ function rendreSelecteur(session) {
   const groupes = [];
   const plan = session.planId ? d.plans.find((p) => p.id === session.planId) : null;
   if (plan) {
-    const restants = plan.exerciseIds
+    const restants = plan.items
+      .map((i) => i.exerciseId)
       .filter((id) => !session.entries.some((e) => e.exerciseId === id))
       .map((id) => exoParId(id)).filter(Boolean);
     if (restants.length) groupes.push({ titre: 'Prévu dans cette séance', exos: restants });
@@ -268,12 +268,16 @@ function rendreExoActif(session, exo) {
   const entree = session.entries.find((e) => e.exerciseId === exo.id);
   const derniereSerie = entree?.sets[entree.sets.length - 1];
   const perf = store.lastPerf(exo.id, session.id);
-  const repsDefaut = derniereSerie?.reps ?? perf?.sets[0]?.reps ?? 10;
+  const plan = session.planId ? store.getData().plans.find((p) => p.id === session.planId) : null;
+  const objectif = plan?.items.find((i) => i.exerciseId === exo.id) || null;
+  const repsDefaut = derniereSerie?.reps ?? objectif?.reps ?? perf?.sets[0]?.reps ?? 10;
   const poidsDefaut = derniereSerie?.weight ?? perf?.sets[0]?.weight ?? 0;
+  const seriesFaites = entree?.sets.length || 0;
 
   return `
     <div class="carte carte-active" id="carte-active">
       <h3>${echapper(exo.name)}</h3>
+      ${objectif ? `<p class="objectif-ligne">Objectif : ${objectif.sets} × ${objectif.reps} reps <span class="texte-attenue">(${seriesFaites}/${objectif.sets} séries)</span></p>` : ''}
       <p class="texte-attenue perf">${perf
         ? `Dernière fois (${new Date(perf.date).toLocaleDateString('fr-FR')}) : ${perf.sets.map(formaterSet).join(' · ')}`
         : 'Première fois sur cet exercice'}</p>
@@ -425,7 +429,7 @@ function rendreJourDetail() {
         <div class="jour-ligne">
           <div>
             <strong>${echapper(p.name)}</strong>
-            <span class="texte-attenue">Prévue · ${p.exerciseIds.length} exercices</span>
+            <span class="texte-attenue">Prévue · ${p.items.length} exercices</span>
           </div>
           <div class="jour-actions">
             <button type="button" class="btn-lien" data-modif-plan="${p.id}">Modifier</button>
@@ -436,7 +440,7 @@ function rendreJourDetail() {
       ${choixModelePourJour ? `
         <div class="choix-modele">
           ${modeles.map((t) => `<button type="button" class="exo-item" data-poser-modele="${t.id}">
-            <span>${echapper(t.name)}</span><span class="texte-attenue">${t.exerciseIds.length} exercices</span>
+            <span>${echapper(t.name)}</span><span class="texte-attenue">${t.items.length} exercices</span>
           </button>`).join('')}
           ${!modeles.length ? '<button type="button" id="btn-creer-depuis-jour" class="btn btn-secondaire">Créer une séance type</button>' : ''}
           <button type="button" id="btn-annuler-choix" class="btn-lien">Annuler</button>
@@ -452,7 +456,7 @@ function rendreModeles() {
       <div class="carte jour-ligne">
         <div>
           <strong>${echapper(t.name)}</strong>
-          <span class="texte-attenue">${t.exerciseIds.map((id) => echapper(exoParId(id)?.name || '?')).join(', ') || 'Vide'}</span>
+          <span class="texte-attenue">${t.items.map((i) => `${i.sets}×${i.reps} ${echapper(exoParId(i.exerciseId)?.name || '?')}`).join(' · ') || 'Vide'}</span>
         </div>
         <div class="jour-actions">
           <button type="button" class="btn-lien" data-modif-modele="${t.id}">Modifier</button>
@@ -469,7 +473,7 @@ function rendreEditeur() {
     ? d.templates.find((t) => t.id === editeur.id)
     : d.plans.find((p) => p.id === editeur.id);
   const nom = objet?.name || '';
-  const coches = new Set(objet?.exerciseIds || []);
+  const objectifs = new Map((objet?.items || []).map((i) => [i.exerciseId, i]));
   const groupes = [
     { titre: 'Poids du corps', exos: d.exercises.filter((e) => e.type === 'corps') },
     { titre: 'Haltères', exos: d.exercises.filter((e) => e.type === 'halteres') },
@@ -486,14 +490,31 @@ function rendreEditeur() {
     ${groupes.map((g) => `
       <h3 class="groupe-titre">${g.titre}</h3>
       <div class="liste-exos">
-        ${g.exos.map((e) => `
-          <label class="exo-item exo-coche">
-            <input type="checkbox" value="${e.id}" ${coches.has(e.id) ? 'checked' : ''}>
-            <span>${echapper(e.name)}</span>
-          </label>`).join('')}
+        ${g.exos.map((e) => {
+          const obj = objectifs.get(e.id);
+          return `
+          <div class="exo-ligne ${obj ? 'cochee' : ''}" data-exo-ligne="${e.id}">
+            <label class="exo-coche-zone">
+              <input type="checkbox" value="${e.id}" ${obj ? 'checked' : ''}>
+              <span>${echapper(e.name)}</span>
+            </label>
+            <div class="objectif" ${obj ? '' : 'hidden'}>
+              <input type="number" class="obj-series" inputmode="numeric" min="1" max="20" value="${obj?.sets ?? 3}" aria-label="Nombre de séries">
+              <span>séries ×</span>
+              <input type="number" class="obj-reps" inputmode="numeric" min="1" max="999" value="${obj?.reps ?? 10}" aria-label="Répétitions par série">
+              <span>reps</span>
+            </div>
+          </div>`;
+        }).join('')}
       </div>`).join('')}
     <button type="button" id="btn-editeur-enregistrer" class="btn btn-succes" style="margin-top:20px">Enregistrer</button>
   `;
+
+  ecran.querySelectorAll('.exo-ligne input[type="checkbox"]').forEach((c) => c.addEventListener('change', () => {
+    const ligne = c.closest('.exo-ligne');
+    ligne.classList.toggle('cochee', c.checked);
+    ligne.querySelector('.objectif').hidden = !c.checked;
+  }));
 
   document.getElementById('btn-editeur-annuler').addEventListener('click', () => {
     editeur = null;
@@ -501,12 +522,18 @@ function rendreEditeur() {
   });
   document.getElementById('btn-editeur-enregistrer').addEventListener('click', () => {
     const nomSaisi = document.getElementById('editeur-nom').value.trim() || 'Séance';
-    const ids = [...ecran.querySelectorAll('input[type="checkbox"]:checked')].map((c) => c.value);
+    const items = [...ecran.querySelectorAll('.exo-ligne')]
+      .filter((l) => l.querySelector('input[type="checkbox"]').checked)
+      .map((l) => ({
+        exerciseId: l.dataset.exoLigne,
+        sets: Math.max(1, Number(l.querySelector('.obj-series').value) || 3),
+        reps: Math.max(1, Number(l.querySelector('.obj-reps').value) || 10),
+      }));
     if (editeur.type === 'template') {
-      if (editeur.id) store.updateTemplate(editeur.id, { name: nomSaisi, exerciseIds: ids });
-      else store.addTemplate({ name: nomSaisi, exerciseIds: ids });
+      if (editeur.id) store.updateTemplate(editeur.id, { name: nomSaisi, items });
+      else store.addTemplate({ name: nomSaisi, items });
     } else {
-      store.updatePlan(editeur.id, { name: nomSaisi, exerciseIds: ids });
+      store.updatePlan(editeur.id, { name: nomSaisi, items });
     }
     planifierPush();
     editeur = null;
