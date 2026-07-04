@@ -130,6 +130,15 @@ export function createStore(storage) {
       return exo;
     },
 
+    // Repos propre à un exercice ; null = revenir à la durée par défaut
+    setExerciseRest(exerciseId, rest) {
+      const exo = data.exercises.find((e) => e.id === exerciseId);
+      if (!exo) return;
+      if (rest === null) delete exo.rest;
+      else exo.rest = Number(rest);
+      ecrire();
+    },
+
     // Dernière performance sur un exercice, hors séance en cours (excludeSessionId)
     lastPerf(exerciseId, excludeSessionId = null) {
       for (let i = data.sessions.length - 1; i >= 0; i--) {
@@ -148,19 +157,18 @@ export function createStore(storage) {
       ecrire();
     },
 
-    addTemplate({ name, items, rest = null }) {
-      const t = { id: genererId('mod'), name: String(name).trim(), rest, items: items.map((i) => ({ ...i })) };
+    addTemplate({ name, items }) {
+      const t = { id: genererId('mod'), name: String(name).trim(), items: items.map((i) => ({ ...i })) };
       data.templates.push(t);
       ecrire();
       return t;
     },
 
-    updateTemplate(id, { name, items, rest }) {
+    updateTemplate(id, { name, items }) {
       const t = data.templates.find((x) => x.id === id);
       if (!t) return;
       if (name !== undefined) t.name = String(name).trim();
       if (items !== undefined) t.items = items.map((i) => ({ ...i }));
-      if (rest !== undefined) t.rest = rest;
       ecrire();
     },
 
@@ -177,7 +185,6 @@ export function createStore(storage) {
         date,
         templateId: templateId || null,
         name: modele ? modele.name : 'Séance',
-        rest: modele ? (modele.rest ?? null) : null,
         items: modele ? modele.items.map((i) => ({ ...i })) : [],
       };
       data.plans.push(p);
@@ -185,13 +192,12 @@ export function createStore(storage) {
       return p;
     },
 
-    updatePlan(id, { name, items, date, rest }) {
+    updatePlan(id, { name, items, date }) {
       const p = data.plans.find((x) => x.id === id);
       if (!p) return;
       if (name !== undefined) p.name = String(name).trim();
       if (items !== undefined) p.items = items.map((i) => ({ ...i }));
       if (date !== undefined) p.date = date;
-      if (rest !== undefined) p.rest = rest;
       ecrire();
     },
 

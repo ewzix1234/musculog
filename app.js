@@ -55,7 +55,10 @@ const timer = createTimer({
 });
 
 function ouvrirTimer() {
-  const duree = store.getData().settings.restDuration;
+  // Repos propre à l'exercice en cours, sinon durée par défaut
+  const exo = exoActifId ? exoParId(exoActifId) : null;
+  const duree = exo?.rest ?? store.getData().settings.restDuration;
+  overlay.querySelector('.timer-titre').textContent = exo ? `Repos — ${exo.name}` : 'Repos';
   for (const b of overlay.querySelectorAll('.timer-durees button')) {
     b.classList.toggle('actif', Number(b.dataset.duree) === duree);
   }
@@ -70,7 +73,9 @@ overlay.addEventListener('click', (ev) => {
   if (!btn) return;
   debloquerAudio();
   if (btn.dataset.duree) {
-    store.save((d) => { d.settings.restDuration = Number(btn.dataset.duree); });
+    // Mémorisé pour l'exercice en cours ; le réglage global ne sert que de défaut
+    if (exoActifId && exoParId(exoActifId)) store.setExerciseRest(exoActifId, Number(btn.dataset.duree));
+    else store.save((d) => { d.settings.restDuration = Number(btn.dataset.duree); });
     planifierPush();
     ouvrirTimer();
   } else if (btn.id === 'timer-plus30') {
@@ -158,7 +163,6 @@ function rendreAccueil() {
   ecranSeance.querySelectorAll('[data-demarrer-plan]').forEach((b) => b.addEventListener('click', () => {
     const plan = store.getData().plans.find((p) => p.id === b.dataset.demarrerPlan);
     store.addSession(plan?.id || null);
-    if (plan?.rest) store.save((d) => { d.settings.restDuration = plan.rest; });
     planifierPush();
     exoActifId = plan?.items[0]?.exerciseId || null;
     enSelection = !exoActifId;
@@ -491,11 +495,6 @@ function rendreEditeur() {
     </div>
     <label class="reglage-label" for="editeur-nom">Nom</label>
     <input id="editeur-nom" type="text" maxlength="60" value="${echapper(nom)}" placeholder="Ex. Haut du corps" class="champ-nom">
-    <label class="reglage-label">Repos entre les séries</label>
-    <div class="repos-choix" role="group" aria-label="Repos entre les séries">
-      ${[['', 'Défaut'], ['30', '30 s'], ['60', '1 min'], ['90', '1:30'], ['120', '2 min'], ['180', '3 min']]
-        .map(([v, l]) => `<button type="button" data-rest="${v}" class="${String(objet?.rest ?? '') === v ? 'actif' : ''}">${l}</button>`).join('')}
-    </div>
     ${groupes.map((g) => `
       <h3 class="groupe-titre">${g.titre}</h3>
       <div class="liste-exos">
@@ -519,9 +518,6 @@ function rendreEditeur() {
     <button type="button" id="btn-editeur-enregistrer" class="btn btn-succes" style="margin-top:20px">Enregistrer</button>
   `;
 
-  ecran.querySelectorAll('.repos-choix button').forEach((b) => b.addEventListener('click', () => {
-    ecran.querySelectorAll('.repos-choix button').forEach((x) => x.classList.toggle('actif', x === b));
-  }));
   ecran.querySelectorAll('.exo-ligne input[type="checkbox"]').forEach((c) => c.addEventListener('change', () => {
     const ligne = c.closest('.exo-ligne');
     ligne.classList.toggle('cochee', c.checked);
@@ -541,13 +537,11 @@ function rendreEditeur() {
         sets: Math.max(1, Number(l.querySelector('.obj-series').value) || 3),
         reps: Math.max(1, Number(l.querySelector('.obj-reps').value) || 10),
       }));
-    const restChoisi = ecran.querySelector('.repos-choix button.actif')?.dataset.rest;
-    const rest = restChoisi ? Number(restChoisi) : null;
     if (editeur.type === 'template') {
-      if (editeur.id) store.updateTemplate(editeur.id, { name: nomSaisi, items, rest });
-      else store.addTemplate({ name: nomSaisi, items, rest });
+      if (editeur.id) store.updateTemplate(editeur.id, { name: nomSaisi, items });
+      else store.addTemplate({ name: nomSaisi, items });
     } else {
-      store.updatePlan(editeur.id, { name: nomSaisi, items, rest });
+      store.updatePlan(editeur.id, { name: nomSaisi, items });
     }
     planifierPush();
     editeur = null;
