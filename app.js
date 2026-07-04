@@ -138,7 +138,7 @@ function rendreAccueil() {
       <div class="carte carte-plan">
         <div>
           <h3>${echapper(p.name)}</h3>
-          <p class="texte-attenue">Prévue aujourd’hui · ${p.exerciseIds.map((id) => echapper(exoParId(id)?.name || '?')).join(', ') || 'aucun exercice'}</p>
+          <p class="texte-attenue">Prévue aujourd’hui · ${p.exerciseIds.length} exercices</p>
         </div>
         <button type="button" class="btn btn-succes" data-demarrer-plan="${p.id}">Démarrer cette séance</button>
       </div>`).join('')}
@@ -147,10 +147,7 @@ function rendreAccueil() {
       <div class="carte">
         <h3>Dernière séance</h3>
         <p class="texte-attenue">${formaterDate(derniere.date)} · ${derniere.entries.length} exercices · ${nbSeries(derniere)} séries</p>
-      </div>` : `
-      <div class="carte">
-        <p class="texte-attenue">Bienvenue ! Démarre ta première séance, choisis un exercice et valide tes séries — le timer de repos se lance tout seul.</p>
-      </div>`}
+      </div>` : ''}
   `;
   document.getElementById('btn-demarrer').addEventListener('click', () => {
     store.addSession();
@@ -356,6 +353,7 @@ let moisAffiche = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let jourSelectionne = dateISO(new Date());
 let editeur = null;        // { type: 'template'|'plan', id: string|null } → éditeur ouvert
 let choixModelePourJour = false;
+let vueAgenda = 'calendrier'; // 'calendrier' | 'modeles'
 
 function sessionsDuJour(date) {
   return store.getData().sessions.filter((s) => s.endedAt && s.date === date);
@@ -396,12 +394,12 @@ function rendreCalendrier() {
           ${d.getMonth() !== mois ? 'autre-mois' : ''}
           ${iso === aujourdHui ? 'aujourdhui' : ''}
           ${iso === jourSelectionne ? 'selectionne' : ''}
-          ${prevues ? 'a-plan' : ''}" data-jour="${iso}">
+          ${faites ? 'fait' : ''} ${prevues ? 'a-plan' : ''}" data-jour="${iso}">
           <span>${d.getDate()}</span>
-          ${faites ? '<i class="pt-fait"></i>' : ''}
         </button>`;
       }).join('')}
-    </div>`;
+    </div>
+    <p class="cal-legende"><i class="leg-fait"></i> faite <i class="leg-plan"></i> prévue</p>`;
 }
 
 function rendreJourDetail() {
@@ -435,25 +433,21 @@ function rendreJourDetail() {
           </div>
         </div>`).join('')}
 
-      ${!faites.length && !prevues.length ? '<p class="texte-attenue">Rien ce jour-là.</p>' : ''}
-
       ${choixModelePourJour ? `
         <div class="choix-modele">
-          ${modeles.length
-            ? modeles.map((t) => `<button type="button" class="exo-item" data-poser-modele="${t.id}">
-                <span>${echapper(t.name)}</span><span class="texte-attenue">${t.exerciseIds.length} exercices</span>
-              </button>`).join('')
-            : '<p class="texte-attenue">Aucune séance type : crée-en une ci-dessous d’abord.</p>'}
+          ${modeles.map((t) => `<button type="button" class="exo-item" data-poser-modele="${t.id}">
+            <span>${echapper(t.name)}</span><span class="texte-attenue">${t.exerciseIds.length} exercices</span>
+          </button>`).join('')}
+          ${!modeles.length ? '<button type="button" id="btn-creer-depuis-jour" class="btn btn-secondaire">Créer une séance type</button>' : ''}
           <button type="button" id="btn-annuler-choix" class="btn-lien">Annuler</button>
         </div>` : `
-        <button type="button" id="btn-planifier" class="btn btn-primaire">Planifier une séance ce jour</button>`}
+        <button type="button" id="btn-planifier" class="btn btn-primaire">Ajouter une séance</button>`}
     </div>`;
 }
 
 function rendreModeles() {
   const modeles = store.getData().templates;
   return `
-    <h3 class="groupe-titre">Mes séances types</h3>
     ${modeles.map((t) => `
       <div class="carte jour-ligne">
         <div>
@@ -465,7 +459,7 @@ function rendreModeles() {
           <button type="button" class="btn-lien btn-lien-danger" data-suppr-modele="${t.id}">Supprimer</button>
         </div>
       </div>`).join('')}
-    <button type="button" id="btn-nouveau-modele" class="btn btn-secondaire">Créer une séance type</button>`;
+    <button type="button" id="btn-nouveau-modele" class="btn btn-primaire">Créer une séance type</button>`;
 }
 
 // Éditeur commun : séance type (modèle) ou séance posée sur un jour (plan)
@@ -487,7 +481,6 @@ function rendreEditeur() {
       <h2>${editeur.type === 'template' ? (editeur.id ? 'Modifier la séance type' : 'Nouvelle séance type') : 'Modifier la séance du jour'}</h2>
       <button type="button" id="btn-editeur-annuler" class="btn-lien">Annuler</button>
     </div>
-    ${editeur.type === 'plan' ? '<p class="texte-attenue" style="margin-bottom:12px">Ces changements ne modifient que ce jour, pas la séance type.</p>' : ''}
     <label class="reglage-label" for="editeur-nom">Nom</label>
     <input id="editeur-nom" type="text" maxlength="60" value="${echapper(nom)}" placeholder="Ex. Haut du corps" class="champ-nom">
     ${groupes.map((g) => `
@@ -524,7 +517,38 @@ function rendreEditeur() {
 function rendreAgenda() {
   if (editeur) return rendreEditeur();
   const ecran = document.getElementById('ecran-agenda');
-  ecran.innerHTML = rendreCalendrier() + rendreJourDetail() + rendreModeles();
+  const segments = `
+    <div class="segments">
+      <button type="button" data-vue="calendrier" class="${vueAgenda === 'calendrier' ? 'actif' : ''}">Calendrier</button>
+      <button type="button" data-vue="modeles" class="${vueAgenda === 'modeles' ? 'actif' : ''}">Séances types</button>
+    </div>`;
+  ecran.innerHTML = segments + (vueAgenda === 'calendrier'
+    ? rendreCalendrier() + rendreJourDetail()
+    : rendreModeles());
+
+  ecran.querySelectorAll('.segments button').forEach((b) => b.addEventListener('click', () => {
+    vueAgenda = b.dataset.vue;
+    choixModelePourJour = false;
+    rendreAgenda();
+  }));
+
+  if (vueAgenda === 'modeles') {
+    document.getElementById('btn-nouveau-modele').addEventListener('click', () => {
+      editeur = { type: 'template', id: null };
+      rendreAgenda();
+    });
+    ecran.querySelectorAll('[data-modif-modele]').forEach((b) => b.addEventListener('click', () => {
+      editeur = { type: 'template', id: b.dataset.modifModele };
+      rendreAgenda();
+    }));
+    ecran.querySelectorAll('[data-suppr-modele]').forEach((b) => b.addEventListener('click', () => {
+      if (!confirm('Supprimer cette séance type ?')) return;
+      store.deleteTemplate(b.dataset.supprModele);
+      planifierPush();
+      rendreAgenda();
+    }));
+    return;
+  }
 
   document.getElementById('cal-prec').addEventListener('click', () => {
     moisAffiche = new Date(moisAffiche.getFullYear(), moisAffiche.getMonth() - 1, 1);
@@ -571,21 +595,10 @@ function rendreAgenda() {
     planifierPush();
     rendreAgenda();
   }));
-
-  document.getElementById('btn-nouveau-modele').addEventListener('click', () => {
+  document.getElementById('btn-creer-depuis-jour')?.addEventListener('click', () => {
     editeur = { type: 'template', id: null };
     rendreAgenda();
   });
-  ecran.querySelectorAll('[data-modif-modele]').forEach((b) => b.addEventListener('click', () => {
-    editeur = { type: 'template', id: b.dataset.modifModele };
-    rendreAgenda();
-  }));
-  ecran.querySelectorAll('[data-suppr-modele]').forEach((b) => b.addEventListener('click', () => {
-    if (!confirm('Supprimer cette séance type ? (Les séances déjà posées sur le calendrier restent.)')) return;
-    store.deleteTemplate(b.dataset.supprModele);
-    planifierPush();
-    rendreAgenda();
-  }));
 }
 
 /* ==================== Écrans Historique / Réglages (Tasks 6-7) ==================== */
@@ -649,7 +662,7 @@ function rendreHistorique() {
   const terminees = [...d.sessions].filter((s) => s.endedAt).reverse();
 
   if (!terminees.length) {
-    ecran.innerHTML = '<div class="carte"><p class="texte-attenue">Aucune séance terminée pour l’instant. Tes séances apparaîtront ici avec ta progression.</p></div>';
+    ecran.innerHTML = '<div class="carte"><p class="texte-attenue">Aucune séance pour l’instant.</p></div>';
     return;
   }
 
@@ -705,49 +718,53 @@ function rendreHistorique() {
   }));
 }
 
+const menusOuverts = new Set(); // menus déroulants restés ouverts entre deux rendus
+
 function rendreReglages() {
   const ecran = document.getElementById('ecran-reglages');
   const { gistToken, gistId, lastSyncAt } = store.getData().settings;
 
   ecran.innerHTML = `
-    <div class="carte">
-      <h3>Sauvegarde en ligne (GitHub Gist)</h3>
-      <p class="texte-attenue reglage-aide">
-        Colle un token GitHub (avec la permission « gist ») : tes données seront
-        sauvegardées automatiquement dans un gist privé et récupérables sur
-        n’importe quel appareil.
-      </p>
-      <label class="reglage-label" for="champ-token">Token GitHub</label>
+    <details class="carte menu-deroulant" id="menu-gist" ${menusOuverts.has('menu-gist') ? 'open' : ''}>
+      <summary>
+        <h3>Sauvegarde en ligne</h3>
+        <span class="texte-attenue">${lastSyncAt ? new Date(lastSyncAt).toLocaleDateString('fr-FR') : gistToken ? '—' : 'off'}</span>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <p class="texte-attenue reglage-aide">Token GitHub avec la permission « gist ».</p>
       <div class="champ-token">
-        <input id="champ-token" type="password" autocomplete="off" placeholder="ghp_… ou github_pat_…" value="${echapper(gistToken)}">
+        <input id="champ-token" type="password" autocomplete="off" placeholder="ghp_… ou github_pat_…" value="${echapper(gistToken)}" aria-label="Token GitHub">
         <button type="button" id="btn-voir-token" aria-label="Afficher ou masquer le token">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
       <button type="button" id="btn-enregistrer-token" class="btn btn-primaire">Enregistrer et synchroniser</button>
-      <p class="texte-attenue reglage-etat">
-        ${gistId ? `Gist : ${echapper(gistId)}` : 'Aucun gist créé pour l’instant.'}
-        ${lastSyncAt ? `<br>Dernière synchro : ${new Date(lastSyncAt).toLocaleString('fr-FR')}` : ''}
-      </p>
       ${gistToken ? `
         <div class="reglage-actions">
           <button type="button" id="btn-sync-maintenant" class="btn btn-secondaire">Synchroniser maintenant</button>
           <button type="button" id="btn-restaurer" class="btn btn-secondaire">Restaurer depuis le Gist</button>
         </div>` : ''}
-    </div>
+    </details>
 
-    <div class="carte">
-      <h3>Sauvegarde par fichier</h3>
-      <p class="texte-attenue reglage-aide">En secours : exporte toutes tes données dans un fichier, ou restaure-les depuis un export précédent.</p>
+    <details class="carte menu-deroulant" id="menu-fichier" ${menusOuverts.has('menu-fichier') ? 'open' : ''}>
+      <summary>
+        <h3>Sauvegarde par fichier</h3>
+        <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
       <div class="reglage-actions">
         <button type="button" id="btn-exporter" class="btn btn-secondaire">Exporter (JSON)</button>
         <button type="button" id="btn-importer" class="btn btn-secondaire">Importer un fichier</button>
       </div>
       <input id="champ-import" type="file" accept="application/json,.json" hidden>
-    </div>
+    </details>
 
-    <p class="texte-attenue version">MuscuLog v1</p>
+    <p class="texte-attenue version">MuscuLog</p>
   `;
+
+  ecran.querySelectorAll('details.menu-deroulant').forEach((d) => d.addEventListener('toggle', () => {
+    if (d.open) menusOuverts.add(d.id);
+    else menusOuverts.delete(d.id);
+  }));
 
   document.getElementById('btn-voir-token').addEventListener('click', () => {
     const champ = document.getElementById('champ-token');
