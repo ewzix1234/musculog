@@ -346,6 +346,11 @@ function terminerSeance(session) {
   rendreSeance();
 }
 
+/* ==================== Icônes ==================== */
+
+const ICONE_POUBELLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>';
+const ICONE_CRAYON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
+
 /* ==================== Écran Agenda : calendrier + séances types ==================== */
 
 function dateISO(d) {
@@ -422,7 +427,7 @@ function rendreJourDetail() {
             <strong>Séance faite</strong>
             <span class="texte-attenue">${s.entries.length} exos · ${nbSeries(s)} séries</span>
           </div>
-          <button type="button" class="btn-lien btn-lien-danger" data-suppr-session="${s.id}">Supprimer</button>
+          <button type="button" class="btn-icone btn-icone-danger" data-suppr-session="${s.id}" aria-label="Supprimer la séance">${ICONE_POUBELLE}</button>
         </div>`).join('')}
 
       ${prevues.map((p) => `
@@ -432,8 +437,8 @@ function rendreJourDetail() {
             <span class="texte-attenue">Prévue · ${p.items.length} exercices</span>
           </div>
           <div class="jour-actions">
-            <button type="button" class="btn-lien" data-modif-plan="${p.id}">Modifier</button>
-            <button type="button" class="btn-lien btn-lien-danger" data-retirer-plan="${p.id}">Retirer</button>
+            <button type="button" class="btn-icone" data-modif-plan="${p.id}" aria-label="Modifier la séance prévue">${ICONE_CRAYON}</button>
+            <button type="button" class="btn-icone btn-icone-danger" data-retirer-plan="${p.id}" aria-label="Retirer la séance prévue">${ICONE_POUBELLE}</button>
           </div>
         </div>`).join('')}
 
@@ -459,8 +464,8 @@ function rendreModeles() {
           <span class="texte-attenue">${t.items.map((i) => `${i.sets}×${i.reps} ${echapper(exoParId(i.exerciseId)?.name || '?')}`).join(' · ') || 'Vide'}</span>
         </div>
         <div class="jour-actions">
-          <button type="button" class="btn-lien" data-modif-modele="${t.id}">Modifier</button>
-          <button type="button" class="btn-lien btn-lien-danger" data-suppr-modele="${t.id}">Supprimer</button>
+          <button type="button" class="btn-icone" data-modif-modele="${t.id}" aria-label="Modifier la séance type">${ICONE_CRAYON}</button>
+          <button type="button" class="btn-icone btn-icone-danger" data-suppr-modele="${t.id}" aria-label="Supprimer la séance type">${ICONE_POUBELLE}</button>
         </div>
       </div>`).join('')}
     <button type="button" id="btn-nouveau-modele" class="btn btn-primaire">Créer une séance type</button>`;
@@ -723,7 +728,7 @@ function rendreHistorique() {
             <strong>${echapper(exoParId(e.exerciseId)?.name || '?')}</strong>
             <div class="chips">${e.sets.map((x) => `<span class="chip">${formaterSet(x)}</span>`).join('')}</div>
           </div>`).join('')}
-          <span class="btn btn-danger btn-suppr-seance" data-suppr="${s.id}" role="button">Supprimer cette séance</span>` : ''}
+          <span class="ligne-droite"><span class="btn-icone btn-icone-danger btn-suppr-seance" data-suppr="${s.id}" role="button" aria-label="Supprimer la séance">${ICONE_POUBELLE}</span></span>` : ''}
       </button>`).join('')}
   `;
 

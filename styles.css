@@ -434,3 +434,19 @@ main { padding: 20px; max-width: 560px; margin: 0 auto; }
 .objectif input::-webkit-outer-spin-button,
 .objectif input::-webkit-inner-spin-button { -webkit-appearance: none; }
 .objectif-ligne { font-size: 15px; font-weight: 600; color: var(--succes); margin-top: 2px; }
+
+/* ==== v6 : boutons icônes (poubelle, crayon) + alignements ==== */
+.btn-icone {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; flex: none;
+  border-radius: var(--r-sm);
+  background: var(--surface-2); border: 1px solid var(--bordure);
+  color: var(--texte-2);
+  transition: transform 150ms ease-out;
+}
+.btn-icone:active { transform: scale(0.92); }
+.btn-icone svg { width: 20px; height: 20px; }
+.btn-icone-danger { color: var(--danger); border-color: rgba(239, 68, 68, 0.45); }
+.jour-ligne > div:first-child { flex: 1; min-width: 0; }
+.jour-actions { gap: 8px; align-items: center; }
+.ligne-droite { display: flex; justify-content: flex-end; margin-top: 12px; }
