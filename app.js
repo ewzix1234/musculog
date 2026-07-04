@@ -2,7 +2,7 @@
 
 import { createStore } from './store.js';
 import { createSync } from './sync.js';
-import { createTimer } from './timer.js';
+import { createTimer, debloquerAudio } from './timer.js';
 
 const store = createStore(localStorage);
 const sync = createSync(store);
@@ -46,6 +46,11 @@ const timer = createTimer({
   },
   onEnd() {
     overlay.hidden = true;
+    // Signal visuel : flash vert (utile iPhone en mode silencieux, sans vibration)
+    const flash = document.createElement('div');
+    flash.className = 'flash-fin';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 900);
   },
 });
 
@@ -63,6 +68,7 @@ function ouvrirTimer() {
 overlay.addEventListener('click', (ev) => {
   const btn = ev.target.closest('button');
   if (!btn) return;
+  debloquerAudio();
   if (btn.dataset.duree) {
     store.save((d) => { d.settings.restDuration = Number(btn.dataset.duree); });
     planifierPush();
@@ -248,7 +254,7 @@ function rendreSessionActive(session) {
     ${exoActif ? rendreExoActif(session, exoActif) : ''}
 
     <button type="button" id="btn-choisir-exo" class="btn ${exoActif ? 'btn-secondaire' : 'btn-primaire'}">
-      ${exoActif ? 'Changer d’exercice' : session.entries.length ? 'Ajouter un exercice' : 'Choisir un exercice'}
+      ${exoActif ? 'Exercice suivant' : session.entries.length ? 'Ajouter un exercice' : 'Choisir un exercice'}
     </button>
   `;
 
@@ -310,6 +316,7 @@ function brancherSaisie(session, exo) {
   }));
 
   document.getElementById('btn-valider-serie').addEventListener('click', () => {
+    debloquerAudio(); // geste utilisateur : indispensable pour que le bip sonne sur iPhone
     const reps = Number(document.getElementById('champ-reps').value) || 0;
     const poids = Number(document.getElementById('champ-poids').value) || 0;
     if (reps <= 0) return;
@@ -831,6 +838,14 @@ for (const btn of document.querySelectorAll('.nav-basse button')) {
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js');
+  // Quand une nouvelle version prend le contrôle, on recharge une fois :
+  // l'app se met à jour toute seule au premier lancement.
+  let dejaRecharge = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (dejaRecharge) return;
+    dejaRecharge = true;
+    location.reload();
+  });
 }
 
 afficherEcran('seance');

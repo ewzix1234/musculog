@@ -353,3 +353,14 @@ main { padding: 20px; max-width: 560px; margin: 0 auto; }
 /* ==== Séance prévue (accueil) ==== */
 .carte-plan h3 { font-size: 20px; }
 .carte-plan .texte-attenue { margin: 4px 0 4px; }
+
+/* ==== Flash de fin de repos ==== */
+.flash-fin {
+  position: fixed; inset: 0; z-index: 200; pointer-events: none;
+  background: var(--succes);
+  animation: flash-fin 850ms ease-out forwards;
+}
+@keyframes flash-fin {
+  0% { opacity: 0.85; }
+  100% { opacity: 0; }
+}

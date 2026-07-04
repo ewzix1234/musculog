@@ -2,6 +2,22 @@
 // est suspendu par iOS : on recalcule le restant depuis l'échéance, on ne
 // cumule jamais des ticks).
 
+// iOS n'autorise le son que si l'AudioContext est créé/réveillé pendant un
+// geste utilisateur : appeler debloquerAudio() depuis un handler de clic.
+let ctxAudio = null;
+
+function obtenirContexteAudio() {
+  return ctxAudio;
+}
+
+export function debloquerAudio() {
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!ctxAudio) ctxAudio = new Ctx();
+    if (ctxAudio.state === 'suspended') ctxAudio.resume();
+  } catch { /* pas d'audio sur cet appareil */ }
+}
+
 export function createTimer({ onTick, onEnd } = {}) {
   let echeance = 0;   // timestamp ms de fin
   let total = 0;      // durée initiale en secondes
@@ -26,18 +42,22 @@ export function createTimer({ onTick, onEnd } = {}) {
   }
 
   function signalerFin() {
+    // Vibration : Android seulement (Safari iOS ne supporte pas l'API)
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate([300, 100, 300]);
     try {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      const ctx = new Ctx();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.frequency.value = 880;
-      gain.gain.setValueAtTime(0.25, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
-      osc.start(); osc.stop(ctx.currentTime + 0.6);
-    } catch { /* audio indisponible : la vibration suffit */ }
+      const ctx = obtenirContexteAudio();
+      if (!ctx || ctx.state !== 'running') return;
+      for (let i = 0; i < 3; i++) {
+        const t = ctx.currentTime + i * 0.28;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.5, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        osc.start(t); osc.stop(t + 0.22);
+      }
+    } catch { /* audio indisponible */ }
   }
 
   let pauseRestant = null; // secondes restantes figées pendant la pause
