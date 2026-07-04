@@ -132,10 +132,11 @@ test('v3 : une sauvegarde v2 (exerciseIds) est migrée vers items avec 3×10 par
 
 test('v3 : CRUD des modèles de séance avec objectifs séries × reps', () => {
   const store = createStore(storageFactice());
-  const t = store.addTemplate({ name: 'Haut du corps', items: [
+  const t = store.addTemplate({ name: 'Haut du corps', rest: 120, items: [
     { exerciseId: 'exo-1', sets: 4, reps: 12 },
     { exerciseId: 'exo-7', sets: 3, reps: 10 },
   ] });
+  assert.equal(store.getData().templates[0].rest, 120);
   assert.equal(store.getData().templates.length, 1);
   assert.equal(store.getData().templates[0].items[0].sets, 4);
   store.updateTemplate(t.id, { name: 'Haut V2', items: [{ exerciseId: 'exo-1', sets: 5, reps: 8 }] });
@@ -147,13 +148,14 @@ test('v3 : CRUD des modèles de séance avec objectifs séries × reps', () => {
 
 test('v3 : poser un modèle sur un jour crée une copie indépendante (items compris)', () => {
   const store = createStore(storageFactice());
-  const t = store.addTemplate({ name: 'Jambes', items: [
+  const t = store.addTemplate({ name: 'Jambes', rest: 90, items: [
     { exerciseId: 'exo-4', sets: 4, reps: 15 },
     { exerciseId: 'exo-5', sets: 3, reps: 12 },
   ] });
   const p = store.addPlan({ date: '2026-07-10', templateId: t.id });
   assert.equal(p.name, 'Jambes');
   assert.equal(p.items.length, 2);
+  assert.equal(p.rest, 90);
 
   // Modifier l'instance du jour (nom, items) ne touche pas le modèle
   store.updatePlan(p.id, { name: 'Jambes light', items: [{ exerciseId: 'exo-4', sets: 2, reps: 15 }] });

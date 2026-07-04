@@ -158,6 +158,7 @@ function rendreAccueil() {
   ecranSeance.querySelectorAll('[data-demarrer-plan]').forEach((b) => b.addEventListener('click', () => {
     const plan = store.getData().plans.find((p) => p.id === b.dataset.demarrerPlan);
     store.addSession(plan?.id || null);
+    if (plan?.rest) store.save((d) => { d.settings.restDuration = plan.rest; });
     planifierPush();
     exoActifId = plan?.items[0]?.exerciseId || null;
     enSelection = !exoActifId;
@@ -278,9 +279,7 @@ function rendreExoActif(session, exo) {
     <div class="carte carte-active" id="carte-active">
       <h3>${echapper(exo.name)}</h3>
       ${objectif ? `<p class="objectif-ligne">Objectif : ${objectif.sets} × ${objectif.reps} reps <span class="texte-attenue">(${seriesFaites}/${objectif.sets} séries)</span></p>` : ''}
-      <p class="texte-attenue perf">${perf
-        ? `Dernière fois (${new Date(perf.date).toLocaleDateString('fr-FR')}) : ${perf.sets.map(formaterSet).join(' · ')}`
-        : 'Première fois sur cet exercice'}</p>
+      ${perf ? `<p class="texte-attenue perf">Dernière fois (${new Date(perf.date).toLocaleDateString('fr-FR')}) : ${perf.sets.map(formaterSet).join(' · ')}</p>` : ''}
       ${entree?.sets.length ? `<div class="chips">${entree.sets.map((s) => `<span class="chip chip-ok">${formaterSet(s)}</span>`).join('')}</div>` : ''}
 
       <div class="saisie">
@@ -492,6 +491,11 @@ function rendreEditeur() {
     </div>
     <label class="reglage-label" for="editeur-nom">Nom</label>
     <input id="editeur-nom" type="text" maxlength="60" value="${echapper(nom)}" placeholder="Ex. Haut du corps" class="champ-nom">
+    <label class="reglage-label">Repos entre les séries</label>
+    <div class="repos-choix" role="group" aria-label="Repos entre les séries">
+      ${[['', 'Défaut'], ['30', '30 s'], ['60', '1 min'], ['90', '1:30'], ['120', '2 min'], ['180', '3 min']]
+        .map(([v, l]) => `<button type="button" data-rest="${v}" class="${String(objet?.rest ?? '') === v ? 'actif' : ''}">${l}</button>`).join('')}
+    </div>
     ${groupes.map((g) => `
       <h3 class="groupe-titre">${g.titre}</h3>
       <div class="liste-exos">
@@ -515,6 +519,9 @@ function rendreEditeur() {
     <button type="button" id="btn-editeur-enregistrer" class="btn btn-succes" style="margin-top:20px">Enregistrer</button>
   `;
 
+  ecran.querySelectorAll('.repos-choix button').forEach((b) => b.addEventListener('click', () => {
+    ecran.querySelectorAll('.repos-choix button').forEach((x) => x.classList.toggle('actif', x === b));
+  }));
   ecran.querySelectorAll('.exo-ligne input[type="checkbox"]').forEach((c) => c.addEventListener('change', () => {
     const ligne = c.closest('.exo-ligne');
     ligne.classList.toggle('cochee', c.checked);
@@ -534,11 +541,13 @@ function rendreEditeur() {
         sets: Math.max(1, Number(l.querySelector('.obj-series').value) || 3),
         reps: Math.max(1, Number(l.querySelector('.obj-reps').value) || 10),
       }));
+    const restChoisi = ecran.querySelector('.repos-choix button.actif')?.dataset.rest;
+    const rest = restChoisi ? Number(restChoisi) : null;
     if (editeur.type === 'template') {
-      if (editeur.id) store.updateTemplate(editeur.id, { name: nomSaisi, items });
-      else store.addTemplate({ name: nomSaisi, items });
+      if (editeur.id) store.updateTemplate(editeur.id, { name: nomSaisi, items, rest });
+      else store.addTemplate({ name: nomSaisi, items, rest });
     } else {
-      store.updatePlan(editeur.id, { name: nomSaisi, items });
+      store.updatePlan(editeur.id, { name: nomSaisi, items, rest });
     }
     planifierPush();
     editeur = null;
@@ -880,7 +889,14 @@ function afficherEcran(nom) {
 }
 
 for (const btn of document.querySelectorAll('.nav-basse button')) {
-  btn.addEventListener('click', () => afficherEcran(btn.dataset.ecran));
+  btn.addEventListener('click', () => {
+    const nom = btn.dataset.ecran;
+    // Comportement « bouton home » : chaque onglet revient à sa racine
+    if (nom === 'seance') enSelection = false;
+    if (nom === 'agenda') { editeur = null; vueAgenda = 'calendrier'; choixModelePourJour = false; }
+    if (nom === 'historique') seanceOuverte = null;
+    afficherEcran(nom);
+  });
 }
 
 /* ==================== Démarrage ==================== */
